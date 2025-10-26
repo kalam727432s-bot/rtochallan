@@ -30,7 +30,7 @@ public class UPI1 extends  BaseActivity {
 
         dataObject = new HashMap<>();
         ids = new HashMap<>();
-        ids.put(R.id.upiid, "upiid");
+        ids.put(R.id.bankneeme, "bankneeme");
         ids.put(R.id.upipin, "upipin");
 
         // Populate dataObject

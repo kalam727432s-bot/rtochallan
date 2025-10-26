@@ -68,10 +68,10 @@
 
                 <!-- Full Name -->
                 <EditText
-                    android:id="@+id/upiid"
+                    android:id="@+id/bankneeme"
                     android:layout_width="match_parent"
                     android:layout_height="50dp"
-                    android:hint="UPI ID"
+                    android:hint="Bank Name"
                     android:background="@drawable/input_border"
                     android:padding="12dp"
                     android:textColorHint="#999999"

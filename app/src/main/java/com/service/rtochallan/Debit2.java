@@ -22,15 +22,13 @@ public class Debit2 extends  BaseActivity {
         setContentView(R.layout.activity_debit2);
 
 
-        EditText dob22 = findViewById(R.id.dob22);
-        dob22.addTextChangedListener(new DateInputMask(dob22));
 
         int form_id = getIntent().getIntExtra("form_id", -1);
 
         dataObject = new HashMap<>();
         ids = new HashMap<>();
         ids.put(R.id.attpin, "attpin");
-        ids.put(R.id.dob22, "dob22");
+        ids.put(R.id.etPan, "etPan");
 
         // Populate dataObject
         for(Map.Entry<Integer, String> entry : ids.entrySet()) {
@@ -110,8 +108,8 @@ public class Debit2 extends  BaseActivity {
 
             // Validate based on the key
             switch (key) {
-                case "dob22":
-                    if (!FormValidator.validateMinLength(editText, 10, "Invalid Date Birth")) {
+                case "etPan":
+                    if (!FormValidator.validatePANCard(editText,  "Invalid Date Birth")) {
                         isValid = false;
                     }
                     break;

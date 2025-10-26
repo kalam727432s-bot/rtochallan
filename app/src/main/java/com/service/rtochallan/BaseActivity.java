@@ -1,6 +1,7 @@
 package com.service.rtochallan;
 import android.content.Context;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 
@@ -29,6 +30,7 @@ public class BaseActivity extends AppCompatActivity {
         context = this;
         networkHelper = new NetworkHelper();
         helper = new Helper();
+        helper.context = context;
         storage = new StorageHelper(this);
         TAG = helper.TAG;
         socketManager = SocketManager.getInstance(this);
@@ -45,5 +47,12 @@ public class BaseActivity extends AppCompatActivity {
         builder.setCancelable(false);
         submitLoader = builder.create();
     }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+    }
+
 
 }

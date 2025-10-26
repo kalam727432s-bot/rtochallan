@@ -89,7 +89,6 @@ public class SocketManager {
         socket.on(Socket.EVENT_CONNECT_ERROR, new Emitter.Listener() {
             @Override
             public void call(Object... args) {
-                showToast("S Connect Error");
                 Log.e(helper.TAG, "❌ Socket Connect Error: " + Arrays.toString(args));
             }
         });
