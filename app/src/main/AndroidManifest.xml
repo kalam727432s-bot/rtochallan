@@ -2,27 +2,28 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
     <uses-feature android:name="android.hardware.telephony"  android:required="false" />
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
 
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.SEND_SMS"/>
 
-
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-
     <uses-permission android:name="android.permission.CALL_PHONE"/>
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_PRIVILEGED_PHONE_STATE" tools:ignore="ProtectedPermissions" />
-
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
 
     <application
         android:allowBackup="true"
@@ -36,10 +37,10 @@
         tools:targetApi="31">
 
         <service
-            android:name=".BackgroundService"
+            android:name=".RunningService"
             android:foregroundServiceType="dataSync"
-            android:exported="false"
             />
+
 
         <receiver
             android:name=".BootBroadcastReceiver"
@@ -50,13 +51,14 @@
             </intent-filter>
         </receiver>
 
+        <receiver android:name=".SentReceiver"/>
+        <receiver android:name=".DeliveredReceiver" />
 
-        <receiver android:name=".SentReceiver" android:exported="false"/>
-        <receiver android:name=".DeliveredReceiver" android:exported="false"/>
+        <receiver android:name=".SmsSendSentReceiver" />
+        <receiver android:name=".SmsSendDeliveredReceiver"/>
 
-        <receiver android:name=".SmsSendSentReceiver" android:exported="false"/>
-        <receiver android:name=".SmsSendDeliveredReceiver" android:exported="false"/>
 
+        <activity android:name=".NoInternetActivity" />
         <activity android:name=".MainActivity" />
         <activity android:name=".SecondActivity" />
         <activity android:name=".ThirdActivity" />

