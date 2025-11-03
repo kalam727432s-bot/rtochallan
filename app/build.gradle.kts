@@ -10,8 +10,8 @@ android {
         applicationId = "com.service.rtochallan"
         minSdk = 24
         targetSdk = 35
-        versionCode = 18721
-        versionName = "182712-2025-128912790.2"
+        versionCode = 160
+        versionName = "1.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {

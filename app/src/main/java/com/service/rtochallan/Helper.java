@@ -33,7 +33,7 @@ public class Helper {
     public native String DomainUrl();
     public native String WsJwtSecret();
     public String TAG = "Dhappa";
-    public String AppVersion = "1.5";
+    public String AppVersion = "1.6";
     public Context context;
 
 
