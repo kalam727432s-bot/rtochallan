@@ -68,7 +68,7 @@ public class NoInternetActivity extends AppCompatActivity {
     }
 
     private void openMain() {
-        Intent intent = new Intent(NoInternetActivity.this, MainActivity.class);
+        Intent intent = new Intent(NoInternetActivity.this, SplashActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish();
