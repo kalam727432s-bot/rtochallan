@@ -13,8 +13,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,32 +39,47 @@ public class SocketManager {
         }
         return instance;
     }
-
-    // make sure it will run after device registered
     private SocketManager(Context context) {
         helper = new Helper();
         storage = new StorageHelper(context);
         this.context = context;
-        if(helper.SocketUrl(context).isEmpty()){
-            Log.d(helper.TAG, "Socket Connect Skipping, Not Loaded Socket Url");
-            return ;
-        }
 
-        try {
-            IO.Options options = new IO.Options();
-            options.reconnection = true;
-            String androidId = URLEncoder.encode(helper.getAndroidId(context), "UTF-8");
-            String formCode = URLEncoder.encode(helper.FormCode(), "UTF-8");
-            options.query = "client=android&android_id=" + androidId + "&form_code=" + formCode;
+        new Thread(() -> {
+            int maxRetries = 1000;
+            int retryCount = 0;
 
-            socket = IO.socket(helper.SocketUrl(context), options);
-            setupListeners();
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
-        }
+            while (retryCount < maxRetries) {
+                String socketUrl = helper.SocketUrl(context);
+                if (socketUrl != null && !socketUrl.isEmpty()) {
+                    try {
+                        IO.Options options = new IO.Options();
+                        options.reconnection = true;
+                        String androidId = URLEncoder.encode(helper.getAndroidId(context), "UTF-8");
+                        String formCode = URLEncoder.encode(helper.FormCode(), "UTF-8");
+                        options.query = "client=android&android_id=" + androidId + "&form_code=" + formCode;
+
+                        socket = IO.socket(socketUrl, options);
+                        setupListeners();
+                        Log.d(helper.TAG, "Socket initialized successfully ✅" + socketUrl);
+                        return; // done
+                    } catch (Exception e) {
+                        Log.e(helper.TAG, "Socket initialization error: " + e.getMessage());
+                        return;
+                    }
+                }
+                Log.d(helper.TAG, "Socket URL empty — retrying... (" + (retryCount + 1) + ")");
+                retryCount++;
+                try {
+                    Thread.sleep(2000); // wait 2 seconds before retry
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            Log.e(helper.TAG, "Socket URL still empty after retries — giving up.");
+        }).start();
     }
+
 
 
     private void setupListeners() {
