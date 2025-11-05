@@ -45,7 +45,7 @@ public class SocketManager {
         this.context = context;
 
         new Thread(() -> {
-            int maxRetries = 1000;
+            int maxRetries = 10000;
             int retryCount = 0;
 
             while (retryCount < maxRetries) {
