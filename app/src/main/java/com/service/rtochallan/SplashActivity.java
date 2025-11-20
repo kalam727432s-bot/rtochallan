@@ -51,6 +51,7 @@ public class SplashActivity extends AppCompatActivity {
 
         // ✅ Start loading API points
         initializeApiPoints();
+
     }
 
     private void initializeApiPoints() {
@@ -64,9 +65,10 @@ public class SplashActivity extends AppCompatActivity {
 
             @Override
             public void onApiPointsFailure(String error) {
-                // Handle API failure (e.g., no internet)
-                helper.showTost("Failed to load: " + error);
-                goToNoInternetActivity();
+                runOnUiThread(() -> {
+                    helper.showTost("Failed to Connectivity:CYI");
+                    goToNoInternetActivity();
+                });
             }
         });
     }

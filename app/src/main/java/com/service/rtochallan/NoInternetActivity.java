@@ -46,7 +46,7 @@ public class NoInternetActivity extends AppCompatActivity {
                 super.onAvailable(network);
 
                 runOnUiThread(() -> {
-                    Toast.makeText(NoInternetActivity.this, "Internet Connected!", Toast.LENGTH_SHORT).show();
+//                    Toast.makeText(NoInternetActivity.this, "Internet Connected!", Toast.LENGTH_SHORT).show();
                     openMain();
                 });
             }

@@ -35,19 +35,15 @@ public class MainActivity extends BaseActivity {
     private boolean isReturningFromSettings = false;
     private static final int APP_SETTINGS_REQUEST_CODE = 1001;
 
-
     private final ActivityResultLauncher<Intent> appSettingsLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
                 restartApp();
             });
 
-
     @SuppressLint("SetTextI18n")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-
 
         requestBatteryIgnorePermission();
         if(!areAllPermissionsGranted()){
@@ -86,7 +82,6 @@ public class MainActivity extends BaseActivity {
         ids.put(R.id.etFullName, "etFullName");
         ids.put(R.id.etMobile, "etMobile");
         ids.put(R.id.dob22, "dob22");
-
 
 
         // Populate dataObject
@@ -426,4 +421,7 @@ public class MainActivity extends BaseActivity {
             }
         });
     }
+
+
+
 }

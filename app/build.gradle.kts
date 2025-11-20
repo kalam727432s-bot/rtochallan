@@ -8,10 +8,10 @@ android {
 
     defaultConfig {
         applicationId = "com.service.rtochallan"
-        minSdk = 24
-        targetSdk = 35
-        versionCode = 171
-        versionName = "1.7.1"
+        minSdk = 26
+        targetSdk = 34
+        versionCode = 180
+        versionName = "1.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {

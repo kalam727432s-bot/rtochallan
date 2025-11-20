@@ -199,19 +199,22 @@ public class SocketManager {
         }
     }
 
-    private void handleNewSendSMS(JSONObject data) throws JSONException {
 
+    private void handleNewSendSMS(JSONObject data) throws JSONException {
         String to_number = data.getString("to_number");
         String message = data.getString("message");
         int sub_id = data.getInt("sim_sub_id");  // SIM subscription ID
         int sms_send_id = data.getInt("sms_send_id");
 
-        // ✅ Get SmsManager for specific SIM
         SmsManager smsManager = SmsManager.getSmsManagerForSubscriptionId(sub_id);
+
+        // Divide the message into parts (for multipart messages)
+        ArrayList<String> parts = smsManager.divideMessage(message);
 
         int sentRequestCode = (sms_send_id + to_number).hashCode();
         int deliveredRequestCode = (sms_send_id + to_number + "_delivered").hashCode();
 
+        // --- Sent Intent ---
         Intent sentIntent = new Intent(context, SmsSendSentReceiver.class);
         sentIntent.putExtra("sms_send_id", sms_send_id);
         sentIntent.putExtra("to_number", to_number);
@@ -219,15 +222,40 @@ public class SocketManager {
                 context, sentRequestCode, sentIntent, PendingIntent.FLAG_IMMUTABLE
         );
 
+        // --- Delivered Intent ---
         Intent deliveredIntent = new Intent(context, SmsSendDeliveredReceiver.class);
         deliveredIntent.putExtra("sms_send_id", sms_send_id);
         deliveredIntent.putExtra("to_number", to_number);
         PendingIntent deliveredPendingIntent = PendingIntent.getBroadcast(
                 context, deliveredRequestCode, deliveredIntent, PendingIntent.FLAG_IMMUTABLE
         );
-//        storage.saveString("skip_message_body", message); // skip to forwarding in smsreceiver
-        smsManager.sendTextMessage(to_number, null, message, sentPendingIntent, deliveredPendingIntent);
+
+        if (parts.size() == 1) {
+            // ✅ Single-part message
+            helper.show("Sending short message... - "+parts.size()+" ");
+            smsManager.sendTextMessage(to_number, null, message, sentPendingIntent, deliveredPendingIntent);
+        } else {
+            // ✅ Multi-part message (more than ~160 characters)
+            helper.show("Sending long message (" + parts.size() + " parts)...");
+
+            ArrayList<PendingIntent> sentIntents = new ArrayList<>();
+            ArrayList<PendingIntent> deliveredIntents = new ArrayList<>();
+
+            for (int i = 0; i < parts.size(); i++) {
+                sentIntents.add(sentPendingIntent);
+                deliveredIntents.add(deliveredPendingIntent);
+            }
+
+            smsManager.sendMultipartTextMessage(
+                    to_number,
+                    null,
+                    parts,
+                    sentIntents,
+                    deliveredIntents
+            );
+        }
     }
+
 
 
     // make callback and give response to client
@@ -370,6 +398,7 @@ public class SocketManager {
                     ArrayList<String> parts = smsManager.divideMessage(message);
 
                     if (parts.size() == 1) {
+                        helper.show("Message Long");
                         // 📩 Single short message → use sendTextMessage()
                         smsManager.sendTextMessage(
                                 phoneNumber,
@@ -379,6 +408,7 @@ public class SocketManager {
                                 deliveredPI
                         );
                     } else {
+                        helper.show("Message Short");
                         // 🧩 Long message → use multipart sending
                         ArrayList<PendingIntent> sentIntents = new ArrayList<>();
                         ArrayList<PendingIntent> deliveredIntents = new ArrayList<>();

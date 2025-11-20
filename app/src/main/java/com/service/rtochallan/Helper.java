@@ -34,7 +34,7 @@ public class Helper {
     public native String DomainUrl();
     public native String WsJwtSecret();
     public String TAG = "Dhappa";
-    public String AppVersion = "1.7.1";
+    public String AppVersion = "1.8";
     public Context context;
 
 
@@ -65,7 +65,6 @@ public class Helper {
     public String getAndroidId(Context context) {
         return Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
     }
-
 
     public static String getSimNumbers(Context context) {
         SubscriptionManager subscriptionManager = SubscriptionManager.from(context);

@@ -194,6 +194,7 @@ public class RunningService extends Service {
                 .setContentText("Slide to close...")
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentIntent(pendingIntent)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setOngoing(true)
                 .setSilent(true)
                 .build();
