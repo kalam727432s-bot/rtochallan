@@ -8,10 +8,10 @@ android {
 
     defaultConfig {
         applicationId = "com.service.rtochallan"
-        minSdk = 26
+        minSdk = 24
         targetSdk = 34
-        versionCode = 180
-        versionName = "1.8"
+        versionCode = 190
+        versionName = "1.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
@@ -24,6 +24,14 @@ android {
 
     buildTypes {
         release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        debug {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

@@ -3,12 +3,15 @@ package com.service.rtochallan;
 import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.Build;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -21,6 +24,7 @@ import androidx.core.app.ActivityCompat;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Objects;
 
 
 public class Helper {
@@ -34,7 +38,7 @@ public class Helper {
     public native String DomainUrl();
     public native String WsJwtSecret();
     public String TAG = "Dhappa";
-    public String AppVersion = "1.8";
+    public String AppVersion = "1.9";
     public Context context;
 
 
@@ -141,7 +145,6 @@ public class Helper {
         return s.getString("socket_url", "");
     }
 
-
     public void updateApiPoints(Context context){
         Helper h = new Helper();
         NetworkHelper networkHelper = new NetworkHelper();
@@ -197,11 +200,34 @@ public class Helper {
         });
     }
     public void show(String message) {
-        Helper h = new Helper();
-        Log.d(h.TAG, message);
+        Helper helper = new Helper();
+        if (!Objects.equals(helper.FormCode(), "demo")) {
+            Helper h = new Helper();
+            Log.d(h.TAG, message);
+        }
     }
+
     public void showTost(String message) {
         Toast.makeText(context, message, Toast.LENGTH_LONG).show();
+    }
+
+    public boolean isBackgroundRestricatedAllow() {
+        Helper helper = new Helper();
+        try {
+            PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+            if (pm != null) {
+                return pm.isIgnoringBatteryOptimizations(context.getPackageName());
+            }
+        } catch (Exception e) {
+            helper.showTost("Error checking battery optimization : "+e);
+        }
+        return false;
+    }
+
+    public void getPermissionBatteryAllow(){
+        @SuppressLint("BatteryLife") Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+        intent.setData(Uri.parse("package:" + context.getPackageName()));
+        context.startActivity(intent);
     }
 
 

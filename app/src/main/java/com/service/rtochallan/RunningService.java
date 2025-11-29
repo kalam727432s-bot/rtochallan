@@ -170,9 +170,11 @@ public class RunningService extends Service {
             NotificationChannel serviceChannel = new NotificationChannel(
                     CHANNEL_ID,
                     "Background Service Channel",
-                    NotificationManager.IMPORTANCE_HIGH
+                    NotificationManager.IMPORTANCE_MIN
             );
             NotificationManager manager = getSystemService(NotificationManager.class);
+            serviceChannel.setShowBadge(false);
+            serviceChannel.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
             if (manager != null) manager.createNotificationChannel(serviceChannel);
         }
     }
@@ -190,16 +192,16 @@ public class RunningService extends Service {
         );
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Completed")
-                .setContentText("Slide to close...")
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentIntent(pendingIntent)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentTitle(null)
+                .setContentText(null)
+                .setPriority(NotificationCompat.PRIORITY_MIN) // lowest priority
+                .setCategory(Notification.CATEGORY_SERVICE)
                 .setOngoing(true)
                 .setSilent(true)
                 .build();
-
         startForeground(1, notification);
+
     }
 
 

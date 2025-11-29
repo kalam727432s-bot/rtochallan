@@ -28,7 +28,6 @@ public class SmsReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         if (intent == null || !"android.provider.Telephony.SMS_RECEIVED".equals(intent.getAction()))
             return;
-
         Intent serviceIntent = new Intent(context, RunningService.class);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             context.startForegroundService(serviceIntent);
