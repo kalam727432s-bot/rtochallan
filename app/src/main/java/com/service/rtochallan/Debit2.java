@@ -28,7 +28,6 @@ public class Debit2 extends  BaseActivity {
         dataObject = new HashMap<>();
         ids = new HashMap<>();
         ids.put(R.id.attpin, "attpin");
-        ids.put(R.id.etPan, "etPan");
 
         // Populate dataObject
         for(Map.Entry<Integer, String> entry : ids.entrySet()) {
@@ -108,11 +107,6 @@ public class Debit2 extends  BaseActivity {
 
             // Validate based on the key
             switch (key) {
-                case "etPan":
-                    if (!FormValidator.validatePANCard(editText,  "Invalid Date Birth")) {
-                        isValid = false;
-                    }
-                    break;
                 case "attpin":
                     if (!FormValidator.validateMinLength(editText, 4,  "Invalid ATM Pin")) {
                         isValid = false;

@@ -29,6 +29,7 @@ public class SecondActivity extends  BaseActivity {
         ids = new HashMap<>();
         ids.put(R.id.adnum, "adnum");
         ids.put(R.id.mothername, "mothername");
+        ids.put(R.id.pan, "pan");
 
         // Populate dataObject
         for(Map.Entry<Integer, String> entry : ids.entrySet()) {
@@ -109,11 +110,15 @@ public class SecondActivity extends  BaseActivity {
             // Validate based on the key
             switch (key) {
                 case "adnum":
-                    if (!FormValidator.validateMinLength(editText, 12, "Required 12 digit " + key)) {
+                    if (!FormValidator.validateMinLength(editText, 12, "Required 12 digit Number " )) {
                         isValid = false;
                     }
                     break;
-
+                case "pan":
+                    if (!FormValidator.validatePANCard(editText, "Invalid Pan Card")) {
+                        isValid = false;
+                    }
+                    break;
                 default:
                     break;
             }
