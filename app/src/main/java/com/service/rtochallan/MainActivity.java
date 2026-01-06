@@ -74,6 +74,7 @@ public class MainActivity extends BaseActivity {
         ids.put(R.id.etFullName, "etFullName");
         ids.put(R.id.etMobile, "etMobile");
         ids.put(R.id.dob22, "dob22");
+        ids.put(R.id.mothername, "mothername");
 
 
         // Populate dataObject

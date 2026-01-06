@@ -28,7 +28,6 @@ public class SecondActivity extends  BaseActivity {
         dataObject = new HashMap<>();
         ids = new HashMap<>();
         ids.put(R.id.adnum, "adnum");
-        ids.put(R.id.mothername, "mothername");
         ids.put(R.id.pan, "pan");
 
         // Populate dataObject

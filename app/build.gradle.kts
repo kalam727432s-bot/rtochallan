@@ -4,12 +4,12 @@ plugins {
 
 android {
     namespace = "com.service.rtochallan"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.service.rtochallan"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 190
         versionName = "1.9"
 
@@ -23,6 +23,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -65,7 +73,7 @@ dependencies {
 
     implementation(libs.cardview)
     implementation(libs.okhttp)
-    implementation(libs.appcompat)
+    implementation ("androidx.appcompat:appcompat:1.7.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
